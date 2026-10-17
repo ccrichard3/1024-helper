@@ -19,7 +19,7 @@
     <line x1="44" y1="180" x2="744" y2="180"
           stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
     <text x="744.0" y="198" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">10-17</text><text x="417.3" y="198" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">10-10</text><text x="90.7" y="198" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">10-03</text>
-    <g transform="translate(48,44)" font-size="10" fill="currentColor" fill-opacity="0.7">
+    <g transform="translate(52,170)" font-size="10" fill="currentColor" fill-opacity="0.7">
       <line x1="0" y1="-3" x2="16" y2="-3" stroke="#2da44e" stroke-width="2.2"/>
       <text x="22" y="0">浏览</text>
       <line x1="58" y1="-3" x2="74" y2="-3" stroke="#8250df" stroke-width="1.5" stroke-dasharray="4 3"/>
