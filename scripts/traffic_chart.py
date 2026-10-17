@@ -156,7 +156,9 @@ def render(history: dict) -> str:
     total_clones = sum(clones.get(d, {}).get("count", 0) for d in days)
 
     grid = []
-    ticks = 4
+    # A tiny maximum (a brand-new repo) would otherwise get fractional gridlines that
+    # all round to the same label. Drop to one line per unit instead.
+    ticks = min(4, y_max)
     for i in range(ticks + 1):
         value = y_max * i / ticks
         y = y_at(value)
@@ -177,6 +179,26 @@ def render(history: dict) -> str:
         )
 
     span = f"{days[0][5:]} 至 {days[-1][5:]}"
+    if total_views == 0 and total_clones == 0:
+        # Nothing has been recorded yet. A flat line at zero reads as a broken chart,
+        # so say plainly that there is nothing to draw.
+        empty = (
+            f'<text x="{left + plot_w / 2:.1f}" y="{top + plot_h / 2:.1f}" '
+            f'text-anchor="middle" font-size="13" fill="currentColor" fill-opacity="0.45">'
+            f"还没有访问记录</text>"
+        )
+        series = ""
+    else:
+        empty = ""
+        series = (
+            f'<path d="{area(view_pts)}" fill="url(#fill)"/>\n'
+            f'    <path d="{smooth_path(clone_pts)}" fill="none" stroke="{PURPLE}" stroke-width="1.5"\n'
+            f'          stroke-linecap="round" stroke-opacity="0.8" stroke-dasharray="4 3"/>\n'
+            f'    <path d="{smooth_path(view_pts)}" fill="none" stroke="{GREEN}" stroke-width="2.2"\n'
+            f'          stroke-linecap="round" stroke-linejoin="round"/>\n'
+            f'    <circle cx="{view_pts[-1][0]:.1f}" cy="{view_pts[-1][1]:.1f}" r="3.2" fill="{GREEN}"/>'
+        )
+
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Repository traffic, {span}">
   <defs>
     <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
@@ -188,12 +210,8 @@ def render(history: dict) -> str:
     <text x="{left}" y="18" font-size="12" fill="currentColor" fill-opacity="0.75">访问量 · {span}</text>
     <text x="{left + plot_w}" y="18" text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.55">浏览 {total_views} · 访客 {total_uniques} · 克隆 {total_clones}</text>
     {''.join(grid)}
-    <path d="{area(view_pts)}" fill="url(#fill)"/>
-    <path d="{smooth_path(clone_pts)}" fill="none" stroke="{PURPLE}" stroke-width="1.5"
-          stroke-linecap="round" stroke-opacity="0.8" stroke-dasharray="4 3"/>
-    <path d="{smooth_path(view_pts)}" fill="none" stroke="{GREEN}" stroke-width="2.2"
-          stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="{view_pts[-1][0]:.1f}" cy="{view_pts[-1][1]:.1f}" r="3.2" fill="{GREEN}"/>
+    {empty}
+    {series}
     <line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}"
           stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
     {''.join(labels)}
