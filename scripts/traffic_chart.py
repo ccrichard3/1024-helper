@@ -51,11 +51,16 @@ def get(path: str) -> dict:
     except urllib.error.HTTPError as exc:
         body = exc.read().decode(errors="replace")[:300]
         if exc.code == 403:
-            raise SystemExit(
+            # "Resource not accessible by integration": the workflow token is not an
+            # admin on this repo, so it cannot see traffic at all. Not an error worth a
+            # red X every morning — say so and leave the recorded history untouched.
+            print(
                 f"GET {path} -> 403: {body}\n"
-                "Traffic requires a token with admin rights on the repository; "
-                "set the TRAFFIC_TOKEN secret."
+                "Traffic needs admin rights. Add a repository secret TRAFFIC_TOKEN "
+                "(a PAT with the repo's Administration: read permission) to record it.",
+                file=sys.stderr,
             )
+            raise SystemExit(0)
         raise SystemExit(f"GET {path} -> {exc.code}: {body}")
 
 
@@ -206,11 +211,13 @@ def render(history: dict) -> str:
 def main() -> int:
     if not REPO or "/" not in REPO:
         raise SystemExit("GITHUB_REPOSITORY is not set to owner/name")
+    if not TOKEN:
+        print("TRAFFIC_TOKEN is not set; nothing to record.", file=sys.stderr)
+        return 0
 
     history = load()
     record(history, "views", get(f"/repos/{REPO}/traffic/views?per=day"))
     record(history, "clones", get(f"/repos/{REPO}/traffic/clones?per=day"))
-
     os.makedirs(os.path.dirname(HISTORY), exist_ok=True)
     with open(HISTORY, "w") as handle:
         json.dump(history, handle, indent=1, sort_keys=True)

@@ -28,10 +28,10 @@ jobs:
       # No dependencies: the script only uses the standard library.
       - name: Record traffic and redraw the chart
         env:
-          # A PAT with admin rights, if one was stored; otherwise the workflow token,
-          # which does carry the push permission the traffic endpoint asks for.
+          # Traffic is admin-only. The workflow token is not an admin, so a repository
+          # secret named TRAFFIC_TOKEN (a PAT with Administration: read) is required;
+          # without it the script logs why and exits cleanly instead of failing the run.
           TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/traffic_chart.py
 
       - name: Commit the new numbers
