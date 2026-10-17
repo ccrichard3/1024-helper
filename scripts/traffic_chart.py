@@ -34,6 +34,10 @@ CHART = os.path.join(ROOT, "traffic", "views.svg")
 
 GREEN = "#2da44e"
 PURPLE = "#8250df"
+# Readmes embed this through <img>, where {INK} resolves to black, so the
+# chart carries its own light card and ink colour to stay legible in dark mode.
+CARD = "#ffffff"
+INK = "#24292f"
 
 
 def get(path: str) -> dict:
@@ -164,18 +168,18 @@ def render(history: dict) -> str:
         y = y_at(value)
         grid.append(
             f'<line x1="{left}" y1="{y:.1f}" x2="{left + plot_w}" y2="{y:.1f}" '
-            f'stroke="currentColor" stroke-opacity="{0.16 if i else 0.3}" stroke-width="1"/>'
+            f'stroke="{INK}" stroke-opacity="{0.16 if i else 0.3}" stroke-width="1"/>'
         )
         grid.append(
             f'<text x="{left - 8}" y="{y + 4:.1f}" text-anchor="end" font-size="10" '
-            f'fill="currentColor" fill-opacity="0.55">{int(value)}</text>'
+            f'fill="{INK}" fill-opacity="0.55">{int(value)}</text>'
         )
 
     labels = []
     for i in range(len(days) - 1, -1, -7):
         labels.append(
             f'<text x="{x_at(i):.1f}" y="{top + plot_h + 18}" text-anchor="middle" '
-            f'font-size="10" fill="currentColor" fill-opacity="0.55">{days[i][5:]}</text>'
+            f'font-size="10" fill="{INK}" fill-opacity="0.55">{days[i][5:]}</text>'
         )
 
     span = f"{days[0][5:]} 至 {days[-1][5:]}"
@@ -184,10 +188,11 @@ def render(history: dict) -> str:
         # so say plainly that there is nothing to draw.
         empty = (
             f'<text x="{left + plot_w / 2:.1f}" y="{top + plot_h / 2:.1f}" '
-            f'text-anchor="middle" font-size="13" fill="currentColor" fill-opacity="0.45">'
+            f'text-anchor="middle" font-size="13" fill="{INK}" fill-opacity="0.45">'
             f"还没有访问记录</text>"
         )
         series = ""
+        legend = ""
     else:
         empty = ""
         series = (
@@ -198,6 +203,15 @@ def render(history: dict) -> str:
             f'          stroke-linecap="round" stroke-linejoin="round"/>\n'
             f'    <circle cx="{view_pts[-1][0]:.1f}" cy="{view_pts[-1][1]:.1f}" r="3.2" fill="{GREEN}"/>'
         )
+        legend = (
+            f'<g transform="translate({left + 8},{top + plot_h - 10})" font-size="10" '
+            f'fill="{INK}" fill-opacity="0.7">\n'
+            f'      <line x1="0" y1="-3" x2="16" y2="-3" stroke="{GREEN}" stroke-width="2.2"/>\n'
+            f'      <text x="22" y="0">浏览</text>\n'
+            f'      <line x1="58" y1="-3" x2="74" y2="-3" stroke="{PURPLE}" stroke-width="1.5" stroke-dasharray="4 3"/>\n'
+            f'      <text x="80" y="0">克隆</text>\n'
+            f'    </g>'
+        )
 
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Repository traffic, {span}">
   <defs>
@@ -207,20 +221,16 @@ def render(history: dict) -> str:
     </linearGradient>
   </defs>
   <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
-    <text x="{left}" y="18" font-size="12" fill="currentColor" fill-opacity="0.75">访问量 · {span}</text>
-    <text x="{left + plot_w}" y="18" text-anchor="end" font-size="11" fill="currentColor" fill-opacity="0.55">浏览 {total_views} · 访客 {total_uniques} · 克隆 {total_clones}</text>
+    <rect x="0" y="0" width="{width}" height="{height}" rx="6" fill="{CARD}"/>
+    <text x="{left}" y="18" font-size="12" fill="{INK}" fill-opacity="0.75">访问量 · {span}</text>
+    <text x="{left + plot_w}" y="18" text-anchor="end" font-size="11" fill="{INK}" fill-opacity="0.55">浏览 {total_views} · 访客 {total_uniques} · 克隆 {total_clones}</text>
     {''.join(grid)}
     {empty}
     {series}
     <line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}"
-          stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
+          stroke="{INK}" stroke-opacity="0.3" stroke-width="1"/>
     {''.join(labels)}
-    <g transform="translate({left + 4},{top + 10})" font-size="10" fill="currentColor" fill-opacity="0.7">
-      <line x1="0" y1="-3" x2="16" y2="-3" stroke="{GREEN}" stroke-width="2.2"/>
-      <text x="22" y="0">浏览</text>
-      <line x1="58" y1="-3" x2="74" y2="-3" stroke="{PURPLE}" stroke-width="1.5" stroke-dasharray="4 3"/>
-      <text x="80" y="0">克隆</text>
-    </g>
+    {legend}
   </g>
 </svg>
 """
