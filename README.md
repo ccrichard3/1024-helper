@@ -1,7 +1,5 @@
 # 1024 Helper
 
-![访问量](traffic/views.svg)
-
 在草榴站里日常逛帖子时，有些事重复得让人烦：点个赞、回一句、把帖子里的图存下来。
 这组油猴脚本就是把这几件事包了起来 —— 装上之后，帖子页右下角会多一个小面板，剩下的交给它。
 
@@ -66,3 +64,13 @@
 
 本项目仅供学习、交流与个人脚本研究使用。使用前请自行确认目标站点的规则、账号限制和相关风险。
 因使用本项目导致的账号异常、限制、封禁或其他后果，由使用者自行承担。
+
+## Star 趋势
+
+<a href="https://www.star-history.com/#ccrichard3/1024-helper&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ccrichard3/1024-helper&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ccrichard3/1024-helper&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ccrichard3/1024-helper&type=date&legend=top-left" />
+  </picture>
+</a>
