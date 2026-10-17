@@ -1,1 +1,10 @@
 .DS_Store
+__pycache__/
+state/
+*.lock
+*.log
+
+# traffic chart (committed on purpose)
+!/scripts/
+!/traffic/
+!/.github/
