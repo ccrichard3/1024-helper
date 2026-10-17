@@ -4,8 +4,10 @@ name: traffic
 # to be recorded here to survive. `traffic/history.json` accumulates one entry per day;
 # `traffic/views.svg` is redrawn from it and embedded in the README.
 on:
-  schedule:
-    - cron: "23 1 * * *"   # daily, 09:23 UTC+8
+  # 每日定时已关闭：README 改用 Star History 的图，这里记录的数据暂时没人看。
+  # 想恢复访问量曲线，把下面两行 schedule 取消注释即可。
+  # schedule:
+  #   - cron: "23 1 * * *"   # daily, 09:23 UTC+8
   workflow_dispatch:
   push:
     paths:
