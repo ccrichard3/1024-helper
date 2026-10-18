@@ -65,10 +65,10 @@
 本项目仅供学习、交流与个人脚本研究使用。使用前请自行确认目标站点的规则、账号限制和相关风险。
 因使用本项目导致的账号异常、限制、封禁或其他后果，由使用者自行承担。
 
-## 访问量
+## 使用趋势
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="traffic/views-dark.svg" />
   <source media="(prefers-color-scheme: light)" srcset="traffic/views.svg" />
-  <img alt="访问量" src="traffic/views.svg" />
+  <img alt="使用趋势" src="traffic/views.svg" />
 </picture>
