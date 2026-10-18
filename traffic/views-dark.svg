@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="533" viewBox="0 0 800 533" role="img" aria-label="使用趋势">
   <defs>
-    <filter id="wobble" width="100%" height="100%" x="-5" y="-5" filterUnits="userSpaceOnUse">
+    <filter id="wobble" x="-15%" y="-15%" width="130%" height="130%">
       <feTurbulence baseFrequency=".05" result="noise" type="fractalNoise"/>
       <feDisplacementMap in="SourceGraphic" in2="noise" scale="4"
                          xChannelSelector="R" yChannelSelector="G"/>
