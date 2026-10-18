@@ -3,7 +3,7 @@
 // @namespace    https://greasyfork.org/zh-CN/scripts/489614-1024%E5%B0%8F%E5%8A%A9%E6%89%8B
 // @version      1.0
 // @description  独立后台采样草榴回复库，控制请求频率并共享给 1024小助手 使用
-// @author       cc
+// @author       ccrichard3
 // @match        *://*/htm_data/*
 // @match        *://*/thread*
 // @match        *://*/@*
@@ -24,7 +24,7 @@
   const REPLY_ANALYTICS_KEY = 'cl1024-reply-analytics-v1';
   const REPLY_SAMPLER_STATE_KEY = 'cl1024-reply-sampler-state-v1';
   const REPLY_SAMPLE_TARGET = 200;
-  const REPLY_FORUM_IDS = [2, 15];
+  const REPLY_FORUM_IDS = [2, 15, 4, 5, 25, 26, 28];
   const REPLY_FORUM_PAGES = 2;
   const AUTO_REPLY_ALLOWED_FORUM_IDS = new Set(REPLY_FORUM_IDS);
   const SAMPLER_REQUEST_DELAY_MIN = 5000;

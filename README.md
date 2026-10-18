@@ -7,7 +7,7 @@
 
 | 脚本 | 作用 |
 |---|---|
-| `1024小助手-v1.1.user.js` | 主脚本。点赞、回复、下载、无图模式都在这里 |
+| `1024小助手-v1.9.user.js` | 主脚本。点赞、回复、下载、无图模式都在这里 |
 | `1024回复采样器.user.js` | 可选。在后台慢慢收集帖子里的回复，喂给主脚本当回复库 |
 
 ## 主脚本能做什么
@@ -32,7 +32,7 @@
 
 用 Tampermonkey 就行：
 
-1. 装 `1024小助手-v1.1.user.js`
+1. 装 `1024小助手-v1.9.user.js`
 2. 如果想让回复库更丰富，再装上 `1024回复采样器.user.js`
 
 平时只开主脚本也完全够用。
@@ -65,12 +65,10 @@
 本项目仅供学习、交流与个人脚本研究使用。使用前请自行确认目标站点的规则、账号限制和相关风险。
 因使用本项目导致的账号异常、限制、封禁或其他后果，由使用者自行承担。
 
-## Star 趋势
+## 访问量
 
-<a href="https://www.star-history.com/#ccrichard3/1024-helper&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ccrichard3/1024-helper&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ccrichard3/1024-helper&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ccrichard3/1024-helper&type=date&legend=top-left" />
-  </picture>
-</a>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="traffic/views-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="traffic/views.svg" />
+  <img alt="访问量" src="traffic/views.svg" />
+</picture>

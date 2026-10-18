@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         1024小助手
 // @namespace    https://greasyfork.org/zh-CN/scripts/489614-1024%E5%B0%8F%E5%8A%A9%E6%89%8B
-// @version      1.8
-// @description  草榴社区帖子页自动点赞、限版块自动随机回复、内置回复库管理、主题图片视频下载、无图模式、返回顶部、防去广告检测
-// @author       cc
+// @version      1.9
+// @description  草榴社区帖子页自动点赞、限版块自动随机回复、自动回复开关、内置回复库管理、主题图片视频下载、无图模式、返回顶部、防去广告检测
+// @author       ccrichard3
 // @match        *://*/htm_data/*
 // @match        *://*/thread*
 // @match        *://*/@*
@@ -177,6 +177,25 @@
     }) || null;
   }
 
+  function findReturnContinueButton() {
+    return [...document.querySelectorAll('input[type="button"], button, a[href], input[type="submit"]')]
+      .find((node) => /返\s*回\s*繼\s*續\s*操\s*作|返回继续操作|返回繼續操作/.test(node.value || node.textContent || '')) || null;
+  }
+
+  function goBackToContinue(backBtn) {
+    if (backBtn) {
+      backBtn.click();
+      return;
+    }
+    if (document.referrer) {
+      window.location.replace(document.referrer);
+      return;
+    }
+    if (history.length > 1) {
+      history.back();
+    }
+  }
+
   function handlePromptPages() {
     const bodyText = (document.body?.innerText || '').replace(/\s+/g, ' ').trim();
 
@@ -188,26 +207,19 @@
       return true;
     }
 
+    const backBtn = findReturnContinueButton();
+    const isForumPromptPage = /論壇提示|论坛提示|提示信息/.test(bodyText)
+      || /論壇提示|论坛提示|提示信息/.test(document.title || '');
+    if (backBtn && isForumPromptPage) {
+      setTimeout(() => goBackToContinue(backBtn), 80);
+      return true;
+    }
+
     const isFloodGuardPage = /灌水預防機制已經打開|灌水预防机制已经打开/.test(bodyText)
       && /1024秒內不能發貼|1024秒内不能发贴/.test(bodyText);
 
     if (isFloodGuardPage) {
-      const backBtn = [...document.querySelectorAll('input[type="button"], button, a[href], input[type="submit"]')]
-        .find((node) => /返\s*回\s*繼\s*續\s*操\s*作|返回继续操作/.test(node.value || node.textContent || ''));
-
-      setTimeout(() => {
-        if (backBtn) {
-          backBtn.click();
-          return;
-        }
-        if (document.referrer) {
-          window.location.replace(document.referrer);
-          return;
-        }
-        if (history.length > 1) {
-          history.back();
-        }
-      }, 80);
+      setTimeout(() => goBackToContinue(backBtn), 80);
       return true;
     }
 
@@ -276,7 +288,7 @@
   }
 
   const REPLY_ANALYTICS_KEY = 'cl1024-reply-analytics-v1';
-  const REPLY_FORUM_IDS = [2, 15];
+  const REPLY_FORUM_IDS = [2, 15, 4, 5, 25, 26, 28];
   const AUTO_REPLY_ALLOWED_FORUM_IDS = new Set(REPLY_FORUM_IDS);
   const AUTO_REPLY_DELAY_MIN = 1800;
   const AUTO_REPLY_DELAY_MAX = 6200;
@@ -717,6 +729,7 @@
       <div class="reply-helper-row">
         <button type="button" class="reply-helper-btn" data-action="download">下载</button>
         <button type="button" class="reply-helper-btn" data-action="no-image">无图</button>
+        <button type="button" class="reply-helper-btn" data-action="auto-reply-toggle"></button>
       </div>
       <div class="reply-helper-list"></div>
     `;
@@ -728,6 +741,7 @@
     const listNode = panel.querySelector('.reply-helper-list');
     const noImageBtn = panel.querySelector('[data-action="no-image"]');
     const listBtn = panel.querySelector('[data-action="list"]');
+    const autoReplyToggleBtn = panel.querySelector('[data-action="auto-reply-toggle"]');
 
     const renderList = () => {
       const replies = getReplyLibrary();
@@ -759,6 +773,8 @@
       draftNode.textContent = buildReplyDraft(getThreadTitle(), seed);
       noImageBtn.classList.toggle('is-active', isNoImage);
       listBtn.classList.toggle('is-active', listNode.classList.contains('is-open'));
+      autoReplyToggleBtn.textContent = isAutoReplyEnabled() ? '自回开' : '自回关';
+      autoReplyToggleBtn.classList.toggle('is-active', isAutoReplyEnabled());
       panel.classList.toggle('is-collapsed', isCollapsed);
       requestAnimationFrame(() => keepReplyHelperInViewport(panel));
     };
@@ -834,6 +850,10 @@
         document.body.classList.toggle('cl-no-image', isNoImage);
         renderDraft();
       }
+      if (action === 'auto-reply-toggle') {
+        setAutoReplyEnabled(!isAutoReplyEnabled());
+        renderDraft();
+      }
       if (action === 'list') {
         listNode.classList.toggle('is-open');
         renderDraft();
@@ -897,6 +917,15 @@
   const READ_THREADS_KEY = 'cl1024-read-threads-v1';
   const AUTO_LIKED_THREADS_KEY = 'cl1024-auto-liked-threads-v1';
   const AUTO_REPLIED_THREADS_KEY = 'cl1024-auto-replied-threads-v1';
+  const AUTO_REPLY_ENABLED_KEY = 'cl1024-auto-reply-enabled-v1';
+
+  function isAutoReplyEnabled() {
+    return localStorage.getItem(AUTO_REPLY_ENABLED_KEY) !== '0';
+  }
+
+  function setAutoReplyEnabled(enabled) {
+    localStorage.setItem(AUTO_REPLY_ENABLED_KEY, enabled ? '1' : '0');
+  }
 
   function loadReadThreads() {
     try {
@@ -999,6 +1028,10 @@
   }
 
   function autoReplyCurrentThread() {
+    if (!isAutoReplyEnabled()) {
+      return;
+    }
+
     if (!document.querySelector('#conttpc') || !isAutoReplyAllowedForum()) {
       return;
     }
@@ -1029,16 +1062,19 @@
         return;
       }
 
-      autoRepliedThreads[tid] = {
-        text: textarea.value.trim(),
-        title: titleInput.value || '',
-        submittedAt: Date.now(),
-        forumId: getCurrentForumId()
-      };
-      saveAutoRepliedThreads(autoRepliedThreads);
-
+      const replyText = textarea.value.trim();
       const delay = randomBetween(AUTO_REPLY_DELAY_MIN, AUTO_REPLY_DELAY_MAX);
       setTimeout(() => {
+        if (!isAutoReplyEnabled()) {
+          return;
+        }
+        autoRepliedThreads[tid] = {
+          text: replyText,
+          title: titleInput.value || '',
+          submittedAt: Date.now(),
+          forumId: getCurrentForumId()
+        };
+        saveAutoRepliedThreads(autoRepliedThreads);
         submitBtn.click();
       }, delay);
     };
