@@ -160,7 +160,8 @@ def render(history: dict, theme: str = "light") -> str:
     plot_w = width - left - right
     plot_h = height - top - bottom
 
-    peak = max([views.get(d, {}).get("count", 0) for d in days] + [1])
+    peak = max([views.get(d, {}).get("count", 0) for d in days]
+               + [clones.get(d, {}).get("count", 0) for d in days] + [1])
     y_max = nice_max(peak)
     last_index = max(len(days) - 1, 1)
     x_at = lambda i: left + plot_w * i / last_index
@@ -196,8 +197,9 @@ def render(history: dict, theme: str = "light") -> str:
     x_ticks = []
     step = max(1, round(len(days) / 6))
     for i in range(0, len(days), step):
+        anchor = "start" if i == 0 else "end" if i + step >= len(days) else "middle"
         x_ticks.append(
-            f'<text x="{x_at(i):.1f}" y="{top + plot_h + 28}" text-anchor="middle" '
+            f'<text x="{x_at(i):.1f}" y="{top + plot_h + 28}" text-anchor="{anchor}" '
             f'font-size="17" fill="{ink}" fill-opacity="0.8">{days[i][5:]}</text>'
         )
 
@@ -227,16 +229,14 @@ def render(history: dict, theme: str = "light") -> str:
             f'fill="{VIEWS}" stroke="{bg}" stroke-width="2"/>'
         )
         legend = (
-            f'<g transform="translate({left + plot_w - 196},{top + 24})" font-size="17" fill="{ink}">'
-            f'<rect x="-8" y="-22" width="200" height="74" rx="6" fill="{bg}" '
-            f'fill-opacity="0.9" stroke="{ink}" stroke-opacity="0.6" stroke-width="1.6" '
-            f'filter="url(#wobble)"/>'
-            f'<line x1="0" y1="-6" x2="26" y2="-6" stroke="{VIEWS}" stroke-width="3" '
+            f'<g font-size="18" fill="{ink}">'
+            f'<line x1="{width / 2 - 132:.0f}" y1="94" x2="{width / 2 - 106:.0f}" y2="94" '
+            f'stroke="{VIEWS}" stroke-width="3" stroke-linecap="round" filter="url(#wobble)"/>'
+            f'<text x="{width / 2 - 96:.0f}" y="100">浏览 {total_views}</text>'
+            f'<line x1="{width / 2 + 14:.0f}" y1="94" x2="{width / 2 + 40:.0f}" y2="94" '
+            f'stroke="{CLONES}" stroke-width="2.4" stroke-dasharray="7 6" '
             f'stroke-linecap="round" filter="url(#wobble)"/>'
-            f'<text x="36" y="0">浏览 {total_views}</text>'
-            f'<line x1="0" y1="24" x2="26" y2="24" stroke="{CLONES}" stroke-width="2.4" '
-            f'stroke-dasharray="7 6" stroke-linecap="round" filter="url(#wobble)"/>'
-            f'<text x="36" y="30">克隆 {total_clones}</text>'
+            f'<text x="{width / 2 + 50:.0f}" y="100">克隆 {total_clones}</text>'
             f"</g>"
         )
 
