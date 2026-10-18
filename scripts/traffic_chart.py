@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Records this repository's GitHub traffic and draws it as an SVG chart.
+"""Records this repository's GitHub traffic and draws it in a hand-drawn style.
 
 GitHub only exposes 14 days of traffic, and only to someone with admin access, so a
 scheduled workflow is the only thing that can both see the numbers and remember them.
 Each run appends today's counts to `traffic/history.json` (which does persist) and
-re-renders `traffic/views.svg`, so the README can show a chart that outlives the
-14-day window.
+re-renders `traffic/views.svg` + `traffic/views-dark.svg`, so the README can show a
+chart that outlives the 14-day window.
+
+The look imitates the hand-drawn Star History chart: wobbly strokes from an
+feTurbulence displacement filter, a handwriting font stack, and a light/dark pair so
+`<picture>` can pick the right one. The font is *not* embedded — xkcd-script is
+CC BY-NC, and these are redistributable repositories — so the stack falls back to
+whatever handwriting face the reader's system has.
 
 Environment:
   GITHUB_REPOSITORY  owner/name (set by Actions)
@@ -31,13 +37,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 HISTORY = os.path.join(ROOT, "traffic", "history.json")
 CHART = os.path.join(ROOT, "traffic", "views.svg")
+CHART_DARK = os.path.join(ROOT, "traffic", "views-dark.svg")
 
-GREEN = "#2da44e"
-PURPLE = "#8250df"
-# Readmes embed this through <img>, where {INK} resolves to black, so the
-# chart carries its own light card and ink colour to stay legible in dark mode.
-CARD = "#ffffff"
-INK = "#24292f"
+VIEWS = "#dd4528"    # the warm red Star History uses for its line
+CLONES = "#3b7dd8"
+FONT = ("xkcd, 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', "
+        "'Segoe Print', 'Noto Sans', sans-serif")
+
+THEMES = {
+    "light": {"bg": "#ffffff", "ink": "#111111"},
+    "dark": {"bg": "#0d1117", "ink": "#e6edf3"},
+}
 
 
 def get(path: str) -> dict:
@@ -100,25 +110,40 @@ def nice_max(value: int) -> int:
     return value
 
 
-def smooth_path(points: list[tuple[float, float]]) -> str:
-    """Catmull-Rom through the points, emitted as cubic Béziers."""
+def smooth_path(points: list[tuple[float, float]],
+                y_lo: float | None = None, y_hi: float | None = None) -> str:
+    """Catmull-Rom through the points, emitted as cubic Béziers.
+
+    `y_lo`/`y_hi` clamp the control points, not just the data points: the spline
+    overshoots around sharp minima, and an unclamped curve dips visibly below zero.
+    """
     if not points:
         return ""
     if len(points) == 1:
         return f"M {points[0][0]:.1f} {points[0][1]:.1f}"
+
+    def clamp(y: float) -> float:
+        if y_lo is not None:
+            y = max(y, y_lo)
+        if y_hi is not None:
+            y = min(y, y_hi)
+        return y
+
     path = [f"M {points[0][0]:.1f} {points[0][1]:.1f}"]
     for i in range(len(points) - 1):
         p0 = points[i - 1] if i > 0 else points[i]
         p1 = points[i]
         p2 = points[i + 1]
         p3 = points[i + 2] if i + 2 < len(points) else p2
-        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
-        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, clamp(p1[1] + (p2[1] - p0[1]) / 6))
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, clamp(p2[1] - (p3[1] - p1[1]) / 6))
         path.append(f"C {c1[0]:.1f} {c1[1]:.1f} {c2[0]:.1f} {c2[1]:.1f} {p2[0]:.1f} {p2[1]:.1f}")
     return " ".join(path)
 
 
-def render(history: dict) -> str:
+def render(history: dict, theme: str = "light") -> str:
+    colors = THEMES[theme]
+    bg, ink = colors["bg"], colors["ink"]
     views = history.get("views", {})
     clones = history.get("clones", {})
 
@@ -130,8 +155,8 @@ def render(history: dict) -> str:
     days = [(start + dt.timedelta(days=i)).isoformat()
             for i in range((today - start).days + 1)]
 
-    width, height = 760, 210
-    left, right, top, bottom = 44, 16, 34, 30
+    width, height = 800, 533
+    left, right, top, bottom = 78, 44, 104, 84
     plot_w = width - left - right
     plot_h = height - top - bottom
 
@@ -142,94 +167,102 @@ def render(history: dict) -> str:
     y_at = lambda v: top + plot_h * (1 - v / y_max)
 
     def points_of(series: dict) -> list[tuple[float, float]]:
-        return [(x_at(i), y_at(series.get(d, {}).get("count", 0))) for i, d in enumerate(days)]
+        # Clamp to the plot area: Catmull-Rom overshoots at sharp local minima, and a
+        # dip below the baseline would read as negative traffic.
+        return [(x_at(i), min(max(y_at(series.get(d, {}).get("count", 0)), top),
+                              top + plot_h))
+                for i, d in enumerate(days)]
 
     view_pts = points_of(views)
     clone_pts = points_of(clones)
-
-    def area(pts: list[tuple[float, float]]) -> str:
-        line = smooth_path(pts)
-        if not line:
-            return ""
-        base = top + plot_h
-        return (f"{line} L {pts[-1][0]:.1f} {base:.1f} "
-                f"L {pts[0][0]:.1f} {base:.1f} Z")
 
     total_views = sum(views.get(d, {}).get("count", 0) for d in days)
     total_uniques = sum(views.get(d, {}).get("uniques", 0) for d in days)
     total_clones = sum(clones.get(d, {}).get("count", 0) for d in days)
 
-    grid = []
-    # A tiny maximum (a brand-new repo) would otherwise get fractional gridlines that
-    # all round to the same label. Drop to one line per unit instead.
-    ticks = min(4, y_max)
+    ticks = min(5, y_max)
+    y_ticks = []
     for i in range(ticks + 1):
         value = y_max * i / ticks
         y = y_at(value)
-        grid.append(
+        y_ticks.append(
             f'<line x1="{left}" y1="{y:.1f}" x2="{left + plot_w}" y2="{y:.1f}" '
-            f'stroke="{INK}" stroke-opacity="{0.16 if i else 0.3}" stroke-width="1"/>'
-        )
-        grid.append(
-            f'<text x="{left - 8}" y="{y + 4:.1f}" text-anchor="end" font-size="10" '
-            f'fill="{INK}" fill-opacity="0.55">{int(value)}</text>'
+            f'stroke="{ink}" stroke-opacity="{0.12 if i else 0.28}" stroke-width="1.4" '
+            f'filter="url(#wobble)"/>'
+            f'<text x="{left - 14}" y="{y + 6:.1f}" text-anchor="end" font-size="17" '
+            f'fill="{ink}" fill-opacity="0.8">{int(value)}</text>'
         )
 
-    labels = []
-    for i in range(len(days) - 1, -1, -7):
-        labels.append(
-            f'<text x="{x_at(i):.1f}" y="{top + plot_h + 18}" text-anchor="middle" '
-            f'font-size="10" fill="{INK}" fill-opacity="0.55">{days[i][5:]}</text>'
+    x_ticks = []
+    step = max(1, round(len(days) / 6))
+    for i in range(0, len(days), step):
+        x_ticks.append(
+            f'<text x="{x_at(i):.1f}" y="{top + plot_h + 28}" text-anchor="middle" '
+            f'font-size="17" fill="{ink}" fill-opacity="0.8">{days[i][5:]}</text>'
         )
+
+    axes = (
+        f'<path d="M {left} {top} L {left} {top + plot_h} L {left + plot_w} {top + plot_h}" '
+        f'fill="none" stroke="{ink}" stroke-width="2.6" stroke-linecap="round" '
+        f'filter="url(#wobble)"/>'
+    )
 
     span = f"{days[0][5:]} 至 {days[-1][5:]}"
     if total_views == 0 and total_clones == 0:
-        # Nothing has been recorded yet. A flat line at zero reads as a broken chart,
-        # so say plainly that there is nothing to draw.
-        empty = (
+        body = (
             f'<text x="{left + plot_w / 2:.1f}" y="{top + plot_h / 2:.1f}" '
-            f'text-anchor="middle" font-size="13" fill="{INK}" fill-opacity="0.45">'
+            f'text-anchor="middle" font-size="24" fill="{ink}" fill-opacity="0.45">'
             f"还没有访问记录</text>"
         )
-        series = ""
         legend = ""
     else:
-        empty = ""
-        series = (
-            f'<path d="{area(view_pts)}" fill="url(#fill)"/>\n'
-            f'    <path d="{smooth_path(clone_pts)}" fill="none" stroke="{PURPLE}" stroke-width="1.5"\n'
-            f'          stroke-linecap="round" stroke-opacity="0.8" stroke-dasharray="4 3"/>\n'
-            f'    <path d="{smooth_path(view_pts)}" fill="none" stroke="{GREEN}" stroke-width="2.2"\n'
-            f'          stroke-linecap="round" stroke-linejoin="round"/>\n'
-            f'    <circle cx="{view_pts[-1][0]:.1f}" cy="{view_pts[-1][1]:.1f}" r="3.2" fill="{GREEN}"/>'
+        body = (
+            f'<path d="{smooth_path(clone_pts, top, top + plot_h)}" fill="none" stroke="{CLONES}" '
+            f'stroke-width="2.4" stroke-opacity="0.85" stroke-dasharray="7 6" '
+            f'stroke-linecap="round" filter="url(#wobble)"/>'
+            f'<path d="{smooth_path(view_pts, top, top + plot_h)}" fill="none" stroke="{VIEWS}" '
+            f'stroke-width="3" stroke-linecap="round" stroke-linejoin="round" '
+            f'filter="url(#wobble)"/>'
+            f'<circle cx="{view_pts[-1][0]:.1f}" cy="{view_pts[-1][1]:.1f}" r="5" '
+            f'fill="{VIEWS}" stroke="{bg}" stroke-width="2"/>'
         )
         legend = (
-            f'<g transform="translate({left + 8},{top + plot_h - 10})" font-size="10" '
-            f'fill="{INK}" fill-opacity="0.7">\n'
-            f'      <line x1="0" y1="-3" x2="16" y2="-3" stroke="{GREEN}" stroke-width="2.2"/>\n'
-            f'      <text x="22" y="0">浏览</text>\n'
-            f'      <line x1="58" y1="-3" x2="74" y2="-3" stroke="{PURPLE}" stroke-width="1.5" stroke-dasharray="4 3"/>\n'
-            f'      <text x="80" y="0">克隆</text>\n'
-            f'    </g>'
+            f'<g transform="translate({left + plot_w - 196},{top + 24})" font-size="17" fill="{ink}">'
+            f'<rect x="-8" y="-22" width="200" height="74" rx="6" fill="{bg}" '
+            f'fill-opacity="0.9" stroke="{ink}" stroke-opacity="0.6" stroke-width="1.6" '
+            f'filter="url(#wobble)"/>'
+            f'<line x1="0" y1="-6" x2="26" y2="-6" stroke="{VIEWS}" stroke-width="3" '
+            f'stroke-linecap="round" filter="url(#wobble)"/>'
+            f'<text x="36" y="0">浏览 {total_views}</text>'
+            f'<line x1="0" y1="24" x2="26" y2="24" stroke="{CLONES}" stroke-width="2.4" '
+            f'stroke-dasharray="7 6" stroke-linecap="round" filter="url(#wobble)"/>'
+            f'<text x="36" y="30">克隆 {total_clones}</text>'
+            f"</g>"
         )
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Repository traffic, {span}">
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="访问量 {span}">
   <defs>
-    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="{GREEN}" stop-opacity="0.32"/>
-      <stop offset="100%" stop-color="{GREEN}" stop-opacity="0.02"/>
-    </linearGradient>
+    <filter id="wobble" width="100%" height="100%" x="-5" y="-5" filterUnits="userSpaceOnUse">
+      <feTurbulence baseFrequency=".05" result="noise" type="fractalNoise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="4"
+                         xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
   </defs>
-  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
-    <rect x="0" y="0" width="{width}" height="{height}" rx="6" fill="{CARD}"/>
-    <text x="{left}" y="18" font-size="12" fill="{INK}" fill-opacity="0.75">访问量 · {span}</text>
-    <text x="{left + plot_w}" y="18" text-anchor="end" font-size="11" fill="{INK}" fill-opacity="0.55">浏览 {total_views} · 访客 {total_uniques} · 克隆 {total_clones}</text>
-    {''.join(grid)}
-    {empty}
-    {series}
-    <line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}"
-          stroke="{INK}" stroke-opacity="0.3" stroke-width="1"/>
-    {''.join(labels)}
+  <rect width="{width}" height="{height}" fill="{bg}"/>
+  <g font-family="{FONT}">
+    <text x="{width / 2:.0f}" y="46" text-anchor="middle" font-size="30"
+          fill="{ink}">访问量</text>
+    <text x="{width / 2:.0f}" y="72" text-anchor="middle" font-size="17"
+          fill="{ink}" fill-opacity="0.65">{REPO or "仓库"} · {span} · 访客 {total_uniques}</text>
+    {''.join(y_ticks)}
+    {axes}
+    {''.join(x_ticks)}
+    <text x="{left + plot_w / 2:.0f}" y="{top + plot_h + 64}" text-anchor="middle"
+          font-size="18" fill="{ink}" fill-opacity="0.75">日期</text>
+    <text x="34" y="{top + plot_h / 2:.0f}" text-anchor="middle" font-size="18"
+          fill="{ink}" fill-opacity="0.75"
+          transform="rotate(-90 34 {top + plot_h / 2:.0f})">次数</text>
+    {body}
     {legend}
   </g>
 </svg>
@@ -251,7 +284,9 @@ def main() -> int:
         json.dump(history, handle, indent=1, sort_keys=True)
         handle.write("\n")
     with open(CHART, "w") as handle:
-        handle.write(render(history))
+        handle.write(render(history, "light"))
+    with open(CHART_DARK, "w") as handle:
+        handle.write(render(history, "dark"))
 
     recorded = len(history.get("views", {}))
     total = sum(v["count"] for v in history.get("views", {}).values())
